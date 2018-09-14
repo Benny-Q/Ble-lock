@@ -116,7 +116,7 @@ uint8_t UART2_ReceiveByte(void)
 	return USART2_RX_BUF;
 }
 
-#if 0
+#ifdef __UART2_DEBUG__
 int SendChar (int ch)  {
 	while (USART_GetFlagStatus(USART2, USART_FLAG_TXE) == RESET)
 	{

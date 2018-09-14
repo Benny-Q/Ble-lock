@@ -30,7 +30,6 @@ CommunicateType gBle;
 
 unsigned char sendUartData[70]={0};
 uint8_t xOrCnt=0;
-uint8_t btMac[9];
 uint8_t uartDataLengthContinut=0;
 u16 uartDataTemp1Length=0;
 uint8_t uartDataXor=0;
@@ -40,7 +39,7 @@ static u8 ManufacturerId[6]={0x30,0x30,0x31,0x31,0x30,0x35};
 static u8 defaultBleMac[14]={0x35,0x35,0x31,0x33,0x31,0x34,0x41,0x45,0x46,0x44,0x41,0x34,0xFF,0xFF};
 //static u8 defaultBleMac[14]={0x35,0x35,0x34,0x34,0x31,0x34,0x41,0x45,0x46,0x44,0x41,0x34,0xFF,0xFF};
 
-u8 gBleMac[12]={0};
+u8 gBleMac[14]={0};
 
 
 /*******全局变量引用**************************************/
@@ -49,7 +48,7 @@ extern uint8_t  uStatus;
 extern UserType currUser;
 extern UserType bleUserInfo[10];
 extern SecretType bleSecretInfo[10];
-//extern u8 Admin_Flag[BT_Admin_Max];
+extern u8 BluetoothMac[BULETOOTH_MAC_MAX];
 extern u8 RFIDData[4];
 extern u8 Battery_Percent;
 
@@ -125,9 +124,10 @@ void getBleMac2ASCII(void)
 
 uint8_t btGetHead(void)
 {
-	u8 i=0,j=0;
+	u8 i=0;
 	//u8 tmp_data[70]={0};
-	if (gBle.uDataLen >= 6)
+	if (gBle.CommunicateUartData[0]==0x89&&gBle.CommunicateUartData[1]==0x89
+			&& gBle.uDataLen >= 6 )
 	{
 		//printf("data=%d\r\n",gBle.uDataLen);
 		for(i=0;i<gBle.uDataLen;i++)
@@ -135,22 +135,7 @@ uint8_t btGetHead(void)
 			printf("rev-data[%d]=%x\r\n",i,gBle.CommunicateUartData[i]);
 		}
 		
-		for(i=0;i<gBle.uDataLen;i++)
-		{
-			//当数据包有特殊字符需过滤
-			if (gBle.CommunicateUartData[i]==0x89 && gBle.CommunicateUartData[i+1]==0x89)
-			{
-				for (j=0;j<gBle.uDataLen-i;j++)
-				{
-					gBle.CommunicateUartData[j]=gBle.CommunicateUartData[i+j];
-					//printf("UartData[%d]=%x\r\n",j,gBle.CommunicateUartData[j]);
-				}
-				gBle.uDataLen -=i;
-			
-				return 1;
-			}
-		}
-			return 1;
+		return 1;
 	}
 	return 0;
 }
@@ -161,7 +146,7 @@ void bleGetRuoChanPro(void)
 
 	for(i=0;i<gBle.uDataLen;i++)
 	{
-		//gBle.CommunicateValidUartData[i] = gBle.CommunicateUartData[12+i];
+		//处理有效数据
 		gBle.CommunicateValidUartData[i] = gBle.CommunicateUartData[12+i];
 		printf("CommunicateValidUartData[%d]=%x\r\n",i,gBle.CommunicateValidUartData[i]);
 	}
@@ -350,13 +335,14 @@ void bleOpen()
 	for (i=0; i<10; i++)
 	{
 		uTemp[i]=gBle.CommunicateValidUartData[18+i];
-		printf("uTemp[%d]=%x\r\n",i,uTemp[i]);
+		//printf("uTemp[%d]=%x\r\n",i,uTemp[i]);
 	}
 	//蓝牙开门密码进行比较
-	printf("openadmin=%x\r\n",Admin_Flag[BT_Admin]);
+	//printf("openadmin=%x\r\n",Admin_Flag[BT_Admin]);
 
 	for (i=0; i<Admin_Flag[BT_Admin]; i++)
 	{
+			#if 0
 			printf("secret[%d]=%x\r\n",i,bleSecretInfo[i].secret[0]);
 			printf("secret[%d]=%x\r\n",i,bleSecretInfo[i].secret[1]);
 			printf("secret[%d]=%x\r\n",i,bleSecretInfo[i].secret[2]);
@@ -368,6 +354,7 @@ void bleOpen()
 			printf("secret[%d]=%x\r\n",i,bleSecretInfo[i].secret[8]);
 			printf("secret[%d]=%x\r\n",i,bleSecretInfo[i].secret[9]);
 			printf("secret[%d].type=%x\r\n",i,bleSecretInfo[i].type);
+			#endif
 			
 			if ((uTemp[0] == bleSecretInfo[i].secret[0]
 					 && uTemp[1] == bleSecretInfo[i].secret[1]
@@ -395,12 +382,12 @@ void bleOpen()
 	
 	if(isOpen)
 	{
-		printf("open\r\n");
+		//printf("open\r\n");
 		open_door();
 	}
 	else
 	{
-		printf("fail\r\n");
+		//printf("fail\r\n");
 		AudioPlay(AUDIO_PROMPT_VALIDATION_FAIL);
 	}
 }
@@ -539,12 +526,12 @@ void bleOperUser()
 	}
 }
 
-void bleAddSecret()
+void bleAddSecret(u8 operType)
 {
 	u8 i =0;
 	u8 exist =0;
 	printf("bleAddSecret\r\n");
-	exist = saveAddSecret(gBle.CommunicateValidUartData,gBle.uDataValidLen);
+	exist = saveAddSecret(gBle.CommunicateValidUartData,operType);
 
 	//发送协议
 	gBle.SendUartData[0]=0x89;
@@ -594,12 +581,13 @@ void bleModifySecret()
 	btSendPack(gBle.CommunicateValidUartData,23);
 }
 
-void bleDelSecret(void)
+void bleDelSecret(u8 operType)
 {
-	u8 reslut=0; /* 0 失败， 1:成功*/
+	u8 result=0; /* 0 失败， 1:成功*/
 	u8 i=0;
 	
-	//reslut=saveModifyOrDelSecret(gBle.CommunicateValidUartData,gBle.uDataValidLen);
+	result=btDelSecretUserInfo(gBle.CommunicateValidUartData,operType);
+	printf("del-result=%d\r\n",result);
 	//发送协议
 	gBle.SendUartData[0]=0x89;
 	gBle.SendUartData[1]=0x89;
@@ -618,7 +606,7 @@ void bleDelSecret(void)
 	/*数据	使用23个字节*/
 	//命令字符
 	gBle.SendUartData[12]=BLE_RESPONSE_OPER_SECRET;
-	gBle.SendUartData[13]=reslut;
+	gBle.SendUartData[13]=result;
 	gBle.SendUartData[14]=0x50;
 
 	//厂商ID + 设备ID
@@ -640,8 +628,10 @@ void bleDelSecret(void)
 
 void bleOperSecret()
 {
-	printf("bleOperSecret=%d\r\n",gBle.CommunicateValidUartData[39]);
-	switch(gBle.CommunicateValidUartData[39])
+	u8 operType = gBle.CommunicateValidUartData[39];
+	printf("bleOperSecret=%d\r\n",operType);
+	
+	switch(operType)
 	{
 		case BT_OPEN:
 		case BT_ADD_USER:
@@ -650,7 +640,7 @@ void bleOperSecret()
 		case BT_ADD_ID_CARD_SECRET:
 		case BT_ADD_FINGER_SECRET:
 		case BT_ADD_NFC_SECRET:
-			bleAddSecret();
+			bleAddSecret(operType);
 			break;
 		case BT_MODIFY_USER:
 		case BT_MODIFY_BLE_SECRET:
@@ -668,7 +658,7 @@ void bleOperSecret()
 		case BT_DEL_ID_CARD_SECRET:
 		case BT_DEL_FINGER_SECRET:
 			//AudioPlay(AUDIO_PROMPT_DELETED);
-			bleDelSecret();
+			bleDelSecret(operType);
 			break;
 		default:
 			break;
@@ -764,12 +754,12 @@ void sendNfcFingerPrintData(u8 data_type, u8 state)
 void bleAddNfcFingerPrint()
 {
 	//判断是添加NFC 还是指纹
-	printf("bleAddNfc type=%d\r\n",gBle.CommunicateValidUartData[gBle.uDataValidLen-1]);
+	//printf("bleAddNfc type=%d\r\n",gBle.CommunicateValidUartData[gBle.uDataValidLen-1]);
 	if (gBle.CommunicateValidUartData[gBle.uDataValidLen-1] == BLE_ADD_DATA_TYPE_FP)
 	{
 		//添加指纹
-		printf("fp state=%d\r\n",gBle.CommunicateValidUartData[gBle.uDataValidLen-2]);
-		//发送已建立添加NFC通讯
+		//printf("fp state=%d\r\n",gBle.CommunicateValidUartData[gBle.uDataValidLen-2]);
+		//发送已建立添加指纹通讯
 		if (gBle.CommunicateValidUartData[gBle.uDataValidLen-2] == BLE_ADD_DATA_START)
 		{
 			sendNfcFingerPrintData(BLE_ADD_DATA_TYPE_FP,BLE_ADD_DATA_START);
@@ -777,7 +767,7 @@ void bleAddNfcFingerPrint()
 		}
 		else if (gBle.CommunicateValidUartData[gBle.uDataValidLen-2] == BLE_ADD_DATA_ING)
 		{
-			//响应 APP已准备录入NFC
+			//响应 APP已准备录入指纹
 			bleFlg = BLE_ADD_FP_WAIT;
 			sysFlg = SYS_BLE_START_FP_SET;
 			bleBuff = 0;
@@ -786,6 +776,7 @@ void bleAddNfcFingerPrint()
 		else if (gBle.CommunicateValidUartData[gBle.uDataValidLen-2] == BLE_ADD_DATA_SUCESS)
 		{
 			sendNfcFingerPrintData(BLE_ADD_DATA_TYPE_FP,BLE_ADD_DATA_SUCESS);
+			sysFlg=0;//退出系统设置
 			bleFlg = 0;
 		}
 	}
@@ -805,11 +796,13 @@ void bleAddNfcFingerPrint()
 			bleFlg = BLE_ADD_NFC_WAIT;
 			sysFlg = SYS_BLE_NFC_SETUP;
 			bleBuff = 0;
+			memset(RFIDData,0x0,sizeof(RFIDData));
 			AudioPlay(AUDIO_PROMPT_SETTING_START); //提示请输入磁卡
 		}
 		else if (gBle.CommunicateValidUartData[gBle.uDataValidLen-2] == BLE_ADD_DATA_SUCESS)
 		{
 			sendNfcFingerPrintData(BLE_ADD_DATA_TYPE_NFC,BLE_ADD_DATA_SUCESS);
+			sysFlg=0;//退出系统设置
 			bleFlg = 0;
 		}
 	}
@@ -860,102 +853,66 @@ extern unsigned char B3TimeFlg;
 u8 sleepCnt;
 u8 send_cmd=0;
 
-void Uart2_AT_send(uint8_t* Data,uint8_t len)
+void getMacFormUart(void)
 {
-	uint8_t i = 0;
-	for(;i<len;i++)
-	{
+	u8 i=0,j=0;
+	u8 tmpMac[14]={0};
 
-			USART_SendData(USART2,Data[i]);
-	}
-		while(USART_GetFlagStatus(USART2, USART_FLAG_TXE)==RESET)
-			;
-}
-void bleEnterInstruct()
-{
-	//btSend("+++",3);
-	#if 0
-	u8 at_value[5]= {0x41,0x54,0x2b,0x6F,0x6B};
-	//u8 cmd[3]={'+','+','+'};
-	u8 temp[5]={0};
-	u8 i=0;
-	for(i=0;i<5;i++)
+	for(i=0;i<gBle.uDataLen;i++)
 	{
-		temp[i]=gBle.CommunicateUartData[3+i];
-		//printf("temp[%d]=%x\r\n",i,temp[i]);
+		if (i>6)
+		{
+			if (gBle.CommunicateUartData[i] != 0x3A 
+					&& gBle.CommunicateUartData[i] != 0xa 
+					&& gBle.CommunicateUartData[i] != 0xd)
+			{
+				tmpMac[j] = gBle.CommunicateUartData[i];
+				j++;
+				printf("mac[%d]=%x\r\n",j,tmpMac[i]);
+			}
+		}
+		
+		
 	}
-	printf("temp0=%x\r\n",gBle.CommunicateUartData[0]);
-	printf("temp1=%x\r\n",gBle.CommunicateUartData[1]);
-	printf("temp2=%x\r\n",gBle.CommunicateUartData[2]);
-	printf("temp3=%x\r\n",gBle.CommunicateUartData[3]);
-	printf("temp2=%x\r\n",gBle.CommunicateUartData[4]);
-	printf("temp4=%x\r\n",gBle.CommunicateUartData[5]);
-	printf("temp5=%x\r\n",gBle.CommunicateUartData[6]);
-	printf("temp6=%x\r\n",gBle.CommunicateUartData[7]);
-	#endif
-	//gBle.uDataLen=0;
-	//if (memcmpStr(at_value,temp,5))
-	//{
-	//	send_cmd =1;
-	//	printf("success\r\n");
-	//}
-	//if (send_cmd == 0)
-	//
-	//{
-		while(gBle.CommunicateUartData[0] !=0x41)
-		{
-			Uart2_AT_send("+++",3);
-			soft_delay_ms(100);
-			printf("+++\r\n");
-		}
-	//}
-	
-		while(gBle.CommunicateUartData[0] !=0x41)
-		{
-			Uart2_AT_send("AT+getAddr\r\n",12);
-			soft_delay_ms(100);
-			printf("AT+getAddr\r\n");
-		}
-	//}
+
+	for (i=0;i<=j;i++)
+		BluetoothMac[i]=tmpMac[i];
+
 }
-void bleReadMac()
+
+void InitializationBTMac(void)
 {
-	//btSend("AT+getAddr\r\n",12);
-	Usart2_SendString("AT+getAddr\r\n",12);
-	soft_delay_ms(500);
+	
+	u8 exist=0;
+	
+	//判断是否已经存在mac数据
+	if (!exist)
+	{
+		soft_delay_ms(2000);
+		Usart2_SendString("+++",3);
+		soft_delay_ms(500);
+		
+		gBle.uDataLen=0;
+		Usart2_SendString("AT+getAddr\r\n",12);
+		soft_delay_ms(500);
+		getMacFormUart();
+		
+		Usart2_SendString("AT+exit\r\n",9);
+		soft_delay_ms(500);
+		gBle.uDataLen=0;
+	}
+
 }
+
 void bleReStart()
 {
 	btSend("AT+reStart\r\n",12);
 }
 
-void getBleMac(void)
-{
-	u8 i=0;
-	bleEnterInstruct();
-	////bleReadMac();
-	//printf("len=%d\r\n",gBle.uDataLen);
-	for(i=0;i<12;i++)
-	{
-		gBleMac[i] = gBle.CommunicateUartData[i+6];
-		printf("mac[%d]=%x\r\n",i,gBleMac[i]);
-	}
-	soft_delay_ms(10);
-	//btSend("AT+exit\r\n",9);
-	printf("AT+exit\r\n");
-}
 
 void blePro(void)
 {
-  #if 0
-	if (gBle.CommunicateUartData[0] == 0x89
-			&& gBle.CommunicateUartData[1]==0x89
-			&& gBle.uDataLen>0)
-		{
-			sendNfcFingerPrintData(BLE_ADD_DATA_TYPE_NFC,BLE_ADD_DATA_START);
-			gBle.uDataLen=0;
-		}
-	#endif
+
 	if(btGetHead())
 	{
 		bleGetRuoChanPro();
@@ -1012,35 +969,45 @@ void blePro(void)
 					bleFlg = 0;
 				}
 				//printf("add=0x%x0x%x0x%x0x%x\r\n",RFIDData[0],RFIDData[1],RFIDData[2],RFIDData[3]);
-				if (RFIDData[0]!=0
-						&& RFIDData[1]!=0
-						&& RFIDData[2]!=0
-						&& RFIDData[3]!=0)
+				if (sysAddDeviceState ==1)
 				{
 					sendNfcFingerPrintData(BLE_ADD_DATA_TYPE_NFC,BLE_ADD_DATA_ING);
+					memset(RFIDData,0x0,sizeof(RFIDData));
 					bleFlg = 0;
 					bleBuff = 0;
+					sysAddDeviceState=0;
 				}
 			}
 			break;
 		case BLE_ADD_FP_WAIT:
-			printf("111B3TimeFlg=%d\r\n",B3TimeFlg);
+			//printf("111B3TimeFlg=%d\r\n",B3TimeFlg);
 			if(B3TimeFlg&T_1000MS)
 			{
 				bleBuff ++;
-				if(bleBuff > 100)
+				if(bleBuff > 15)
 				{
 					bleBuff = 0;
 					sendNfcFingerPrintData(BLE_ADD_DATA_TYPE_FP,BLE_ADD_DATA_FAIL);
 					AudioPlay(AUDIO_PROMPT_VALIDATION_TIMEOUT);
 					bleFlg = 0;
+					sysFlg=0;//退出系统设置
+					sysAddDeviceState=0;
 				}
 				//printf("add=0x%x0x%x0x%x0x%x\r\n",RFIDData[0],RFIDData[1],RFIDData[2],RFIDData[3]);
-				if (Admin_Flag[BT_Admin_FPRT]>0)
+				if (sysAddDeviceState ==Result_Succes)
 				{
 					sendNfcFingerPrintData(BLE_ADD_DATA_TYPE_FP,BLE_ADD_DATA_ING);
 					bleFlg = 0;
 					bleBuff = 0;
+					sysAddDeviceState=0;
+				}
+				else if (sysAddDeviceState ==Result_Failed || sysAddDeviceState ==Result_Timeout)
+				{
+					sendNfcFingerPrintData(BLE_ADD_DATA_TYPE_FP,BLE_ADD_DATA_FAIL);
+					bleFlg = 0;
+					bleBuff = 0;
+					sysFlg=0;//退出系统设置
+					sysAddDeviceState=0;
 				}
 			}
 			break;

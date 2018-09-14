@@ -74,10 +74,12 @@ void Bluetooth_Exit_init(void)
 	EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
 	EXTI_InitStructure.EXTI_LineCmd = ENABLE;
 	EXTI_Init(&EXTI_InitStructure); 
-	
+
+	#if 0
 	NVIC_InitStructure.NVIC_IRQChannel = EXTI2_3_IRQn; 
 	NVIC_InitStructure.NVIC_IRQChannelPriority= 1 ;
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+	#endif
 	NVIC_Init(&NVIC_InitStructure);
 
 

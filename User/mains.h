@@ -7,10 +7,10 @@
 
 #define  __VOICE_SUPPORT__
 //#define  __PREVENT__
-#define  __FOR_DEMO__
+//#define  __FOR_DEMO__
 #define  macSPI1_RC522
-//#define  __DEBUG__
-//#define  __DEBUG2__
+#define  __UART1_DEBUG__
+//#define  __UART2_DEBUG__
 #define __FPRT_BYD__
 //#define __FPRT_SET_REG_
 #define RTC_CLOCK_SOURCE_LSE
@@ -63,6 +63,12 @@
 #include "STM_GPIO_List.h"
 
 #include "Ble.h"
+
+//宏常量定义
+#define BULETOOTH_MAC_MAX 14    //蓝牙mac地址最大
+#define SECRET_INFO_NUM_MAX 10  //密码表信息存储最大个数
+#define USER_INFO_NUM_MAX 10  //用户表信息存储最大个数
+
 
 extern u8 _get_system_sleep_status(void);
 extern void _set_system_sleep_status(void);

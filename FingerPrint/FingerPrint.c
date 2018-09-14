@@ -352,6 +352,7 @@ int Fingerprint_Enroll(uint8_t permissions, uint16_t User_Number)
 					break;
 				case Result_Failed: 
 					AudioPlay(AUDIO_PROMPT_RECORD_FAIL);
+					sysAddDeviceState=Result_Failed;
 					i=0;
 					return -1;
 				case Result_Succes:
@@ -361,14 +362,16 @@ int Fingerprint_Enroll(uint8_t permissions, uint16_t User_Number)
 					AudioPlay(AUDIO_PROMPT_FGPRT_RECORD_SUCCESS);//指纹登记成功
 					#ifdef __BLUETOOTH_SUPPORT__
 					Admin_Flag[BT_Admin_FPRT]++;
+					sysAddDeviceState=Result_Succes;
 					#else
 					Exist = (u8)Flag_Inf[Admin_FPRT];
 					save(ADMIN_FINGER_STR,&Exist,1);
 					#endif
-					return 0;
+					return Result_Succes;
 				case Result_Exist:					
 					return Result_Exist;
 				case Result_Timeout:
+					sysAddDeviceState=Result_Timeout;
 					i=0;
 					return -1;
 			}
@@ -568,7 +571,7 @@ void fingerOpenPro(void)
 		#endif
 
 		#ifdef __BLUETOOTH_SUPPORT__
-		if(((FPRT_Read_ret==Result_Succes))
+		if((FPRT_Read_ret==Result_Succes)
 		#else
 		if(((FPRT_Read_ret==Result_Succes)||(Flag_Inf[ADMIN]==0))
 		#endif
@@ -645,11 +648,7 @@ void fingerSetupEffiPro(void)
 		switch(FPRT_Read_ret)
 		{
 			case Result_Succes:
-				#ifdef __BLUETOOTH_SUPPORT__
-				sysFlg = SYS_BLE_FP_SETUP;
-				#else
 				sysFlg = SYS_SETUP;
-				#endif
 				//AudioPlay(AUDIO_PROMPT_INIT_SETTING);
 				AudioPlay_All(AUDIO_PROMPT_VALIDATION_SUCCESS,AUDIO_PROMPT_SETTING_START,AUDIO_PROMPT_NONE);//验证通过，请输入指纹、密码或刷卡
 				break;
@@ -675,7 +674,8 @@ void fingerPro(void)
 	}
 	else if(sysFlg&SYS_BLE_START_FP_SET)
 	{
-		fingerSetupEffiPro();		
+		//fingerSetupEffiPro();	
+		sysFlg = SYS_BLE_FP_SETUP;
 	}
 	#else
 	if(sysFlg&SYS_SETUP)

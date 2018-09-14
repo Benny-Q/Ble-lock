@@ -109,7 +109,7 @@ extern void bleGetRuoChanPro(void);
 extern void bleIdCard(uint8_t uStatus,u8 uCmd);
 extern uint8_t openCheckPro(uint8_t *uData);
 extern void defaultData(void);
-extern void getBleMac(void);
+extern void InitializationBTMac(void);
 
 /*
 操作类型：0.开门 1.增加用户 2.修改用户 3.删除用户 4.增加蓝牙密码 5.修改蓝牙密码 6.删除蓝牙密码 

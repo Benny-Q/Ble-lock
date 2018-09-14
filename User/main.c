@@ -15,6 +15,7 @@ u32 time_info_start=0;
 u32 time_info_end=0; 
 
 extern volatile unsigned char B3TimeFlg;
+extern CommunicateType gBle;
 
 u8 _get_system_sleep_status(void)
 {
@@ -157,19 +158,21 @@ int main(){
 /*-------------------------------------*/ 
 	Config_Key_Init();
 	figcntRxd = 0;
-	
+
+	//第一次开机清除一次蓝牙上电发送的字符
+	gBle.uDataLen=0;
 /****************
 	test Hardware
 ****************/	
 	check_Admin_info();
 	LED_drive();
 	__Config_flag = 0;
-	#ifdef	__DEBUG2__
+	#if 1//def	__DEBUG2__
 	printf("Start init finish\r\n");
 	#endif
 	AudioPlay(AUDIO_PROMPT_WELCOME);
 //	bluetooth_init();
-//  getBleMac();
+
 /***************************************************
 *														  *	
 *				系统初始化完毕				  *	
@@ -186,7 +189,7 @@ int main(){
 		touchPro();	
 		RFIDPro();
 		fingerPro();
-		sleepPro();
+		//sleepPro();
 		ErroPro();
 #ifdef __BLUETOOTH_SUPPORT__
 		blePro();

@@ -95,6 +95,11 @@ typedef enum
 }BT_Flag_Info;
 
 
+//数据存储flash每页中的起始地址
+#define SYS_DATA_ADDR 0
+#define SYS_DATA_BTMAC_ADDR BT_Admin_Max
+
+
 /************************************************************
 *																	
 *		Userflag说明
@@ -117,11 +122,6 @@ typedef struct
 	uint8_t Info[6];
 }User_Info;
 
-typedef struct
-{
-	uint8_t uid[4];
-}BT_User_type_t;
-
 
 typedef struct
 {
@@ -134,6 +134,9 @@ extern User_Info UserInfo[100];
 extern u8 Flag_Inf[ADD_MAX];
 extern Flag_Info FlagInfo;
 extern Open_Info OpenInfo[125];
+
+extern u8 Admin_Flag[BT_Admin_Max];
+
 
 
 void Flash_Write_Dat(unsigned long write_num_temp,unsigned long write_dat_temp);

@@ -1,14 +1,16 @@
 #include "mains.h"
 
+
 uint8_t Flash_Buffer[1024] = {0xff}; 
 u8 Flag_Inf[ADD_MAX]={0};
 User_Info UserInfo[100];
 Open_Info OpenInfo[125];
 u8 getData[ADD_MAX]={0};
 
-UserType bleUserInfo[10];
-SecretType bleSecretInfo[10];
-u8 Admin_Flag[4]={0};
+UserType bleUserInfo[USER_INFO_NUM_MAX];
+SecretType bleSecretInfo[SECRET_INFO_NUM_MAX];
+u8 Admin_Flag[BT_Admin_Max]={0};
+u8 BluetoothMac[BULETOOTH_MAC_MAX]={0};
 
 
 
@@ -403,7 +405,8 @@ void Read_flash_Data(uint8_t Flash_Block ,uint8_t Data_Page)
 	}
 	else if(Flash_Block == BT_System_Data)
 	{
-		memcpy(Admin_Flag,Flash_Buffer,sizeof(Admin_Flag));
+		memcpy(Admin_Flag,Flash_Buffer+SYS_DATA_ADDR,sizeof(Admin_Flag));
+		memcpy(BluetoothMac,Flash_Buffer+SYS_DATA_BTMAC_ADDR,sizeof(BluetoothMac));
 	}
 
 	__enable_irq();
@@ -465,7 +468,8 @@ void SaveData_Inf(uint8_t Flash_data,uint8_t Page)
 	}
 	else if (Flash_data == BT_System_Data)
 	{
-		memcpy(Flash_Buffer, Admin_Flag, sizeof(Admin_Flag));
+		memcpy(Flash_Buffer+SYS_DATA_ADDR, Admin_Flag, sizeof(Admin_Flag));
+		memcpy(Flash_Buffer+SYS_DATA_BTMAC_ADDR, BluetoothMac, sizeof(BluetoothMac));
 	}
 	
 	Flash_Write_Page(Page, Flash_Buffer);

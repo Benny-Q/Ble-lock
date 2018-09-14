@@ -49,6 +49,7 @@ u8 isHaveAdmin()
 u8 sysFlg=0;
 u8 sysCnt=0;
 u8 sysBuff=0;
+u8 sysAddDeviceState=0;
 
 
 #define KEY_SETUP_STEP	20
@@ -57,6 +58,7 @@ u8 keySetupFlg=0;
 u8 keySetupBuff=0;
 u8 keySetupCnt=0;
 extern volatile unsigned char B3TimeFlg; 		
+extern SecretType bleSecretInfo[SECRET_INFO_NUM_MAX];
 
 
 
@@ -174,7 +176,6 @@ u8 touchData[2][12];
 u8 touchTimer=0;
 u8 touchErrorTimer=0;
 
-
 void cleanInputKey(void)
 {
     u8 i=0;
@@ -255,62 +256,6 @@ void save(u8 pswdRfidTouch,u8 *dData,u8 uLength)
 	SaveData_Inf(System_Data, System_Data_0);
 }
 
-
-void BtSaveFlashData(u8 data_type, SecretType data, u8 len)
-{
-	u8 i=0;
-	if (data_type == ADMIN_PSW_STR)
-	{
-			//添加手机号码
-			for (i=0; i<11; i++)
-				bleSecretInfo[Admin_Flag[BT_Admin]].phone[i] = data.phone[i];
-			
-			//添加密码
-			for (i=0; i<6; i++)
-				bleSecretInfo[Admin_Flag[BT_Admin]].secret[i] = data.secret[i];
-
-			printf("save digit-pwd\r\n");
-			
-	}
-	else if (data_type == ADMIN_RFID_STR)
-	{
-		for (i=0; i<10; i++)
-		{
-			bleSecretInfo[Admin_Flag[BT_Admin]].secret[i] = data.secret[i];
-			//printf("save[%d]=0x%x\r\n",i,data.secret[i]);
-		}
-		bleSecretInfo[Admin_Flag[BT_Admin]].type = data_type;
-	}
-	else if (data_type == ADMIN_FINGER_STR)
-	{
-		bleSecretInfo[Admin_Flag[BT_Admin]].secret[0] = data.secret[0];
-		bleSecretInfo[Admin_Flag[BT_Admin]].type = data_type;
-		//Admin_Flag[BT_Admin_FPRT]++;
-	}
-	else if (data_type == ADMIN_BT_STR)
-	{
-		if (data.type == BT_ADD_BLE_SECRET)
-		{
-			for (i=0; i<10; i++)
-			{
-				bleSecretInfo[Admin_Flag[BT_Admin]].secret[i] = data.secret[i];
-				printf("save-BT[%d]=0x%x\r\n",i,data.secret[i]);
-			}
-
-			bleSecretInfo[Admin_Flag[BT_Admin]].type = data_type;
-		}
-	}
-
-	printf("s-user =%d\r\n",Admin_Flag[BT_Admin]);
-	SaveData_Inf(BT_Secret_Data, BT_Secret_Data);
-	if (data_type)
-	{
-		Admin_Flag[BT_Admin]++; 
-	}
-	printf("s-sys=%d\r\n",Admin_Flag[BT_Admin]);
-	SaveData_Inf(BT_System_Data, BT_System_Page);
-}
-
 void touchCheckAddAdmin(void)
 {
 	if(touchCmp())
@@ -328,7 +273,47 @@ void touchCheckAddAdmin(void)
 u8 touchCheckIsAdmin(void)
 {
 	u8 i=0,j=0;
-	u8 userInfoTemp[12];
+	u8 result=0;
+	u8 pwdH=0,pwdL=0;
+	u8 tmpPwd[6];
+	
+	#ifdef __BLUETOOTH_SUPPORT__
+	if (Admin_Flag[BT_Admin_Pswd]==0) return 0;
+
+	for (i=0;i<Admin_Flag[BT_Admin];i++)
+	{
+		if (bleSecretInfo[i].type == ADMIN_PSW_STR)
+		{
+			//将存储的密码进行转换, 数字密码的长度为6位,数据存储使用三个字节
+			for(j=0;j<3;j++)
+			{
+				pwdH = (bleSecretInfo[i].secret[j]&0xf0)>>4;
+				pwdL = bleSecretInfo[i].secret[j]&0x0f;
+				tmpPwd[j*2]=pwdH;
+				tmpPwd[j*2+1]=pwdL;
+			}
+			//比较
+			for (j=0;j<6;j++)
+			{
+				//printf("tmp[%d]=%d , touch[%d]=%d\r\n",j,tmpPwd[j],j,touchData[0][j]);
+				if (touchData[0][j] != tmpPwd[j])
+				{
+				  result=0;
+					break;  //输入密码不匹配调出循环比较
+				}
+				else
+				{
+					result =1; //输入密码匹配
+				}
+			}
+
+			if (result==1) break;
+			
+		}
+	}
+
+	return result;
+	#else
 	for(i=0;i<Flag_Inf[ADMIN];i++)
 	{
 		if(keyCnt == UserInfo[i].User_Info_CNT)
@@ -359,6 +344,7 @@ u8 touchCheckIsAdmin(void)
 	{
 		return 0;
 	}
+	#endif
 }
 
 void timeOut()
@@ -402,7 +388,7 @@ void touchCheckOpen()
 		open_door();
 		//touchTimer = 0;
 	}
-	else if((Flag_Inf[ADMIN]==0)
+	else if((Admin_Flag[BT_Admin]==0)
 	&&(touchData[0][0] == 1)
 	&&(touchData[0][1] == 2)
 	&&(touchData[0][2] == 3)
@@ -499,7 +485,6 @@ void touchCheck(void)
 			else if(touchTimer==0)
 			{
 				touchTimer = 1;
-				printf("ooooo\r\n");
 				AudioPlay(AUDIO_PROMPT_KEYIN_PSWD_AGAIN); //请再输入同一密码
 			}
 			else if(touchTimer==1)
@@ -612,8 +597,8 @@ void touchPro(void)
 	{
 		touchFlg &= ~TOUCH_DOWN;
 		APT_ScanTouchKey();
-#if 1//def __DEBUG2__
-		printf("key_value = 0x%04X\r\n",APTTouchKeyreg_value);
+#ifdef __DEBUG2__
+		printf("key_value = %d\r\n",APTTouchKeyreg_value);
 #endif
 		touchCheck();
 	}
@@ -631,6 +616,7 @@ UserType currUser;
 #define OPTION_SECRET				0xD2
 #define SETUP_IP					0xAC
 extern u8 getData[64];
+
 
 u8 getBtAdminSecret(u8 *uData)
 {
@@ -650,14 +636,34 @@ u8 getBtAdminSecret(u8 *uData)
 	return 0;
 }
 
-u8 batCnt=100;
-
-void McuEepromReadBuffer(BYTE *pucBuff, WORD wAddr, WORD wLen)
+/***********************************************************************
+*函数名 getUserIsExist
+*功能:  判断用户是否存在 通过手机号
+***********************************************************************/
+u8 getUserIsExist(u8 *uData)
 {
+	u8 i=0;
+	u8 phoneNum[11]={0};
 
+	for (i=0;i<11;i++)
+	{
+		phoneNum[i]=uData[2+i];
+	}
+
+	//比较
+	for (i=0;i<USER_INFO_NUM_MAX;i++)
+	{
+		if (!memcmp(phoneNum,bleSecretInfo[i].phone,11))
+		{
+
+			return 1;
+		}
+	}
+	
+	return 0;
 }
-void McuEepromWriteBuffer(BYTE *pucBuff, WORD wAddr, WORD wLen){  
-}
+
+u8 batCnt=100;
 
 void defaultData()
 {
@@ -677,14 +683,14 @@ u8 saveAddUser(u8 *uData,u8 wSize)
 	}
 	for(i=0;i<10;i++)
 	{
-		McuEepromReadBuffer(uBuff, (1+i)<<6, 64);
+		//McuEepromReadBuffer(uBuff, (1+i)<<6, 64);
 		if(((*uBuff)<'0')||((*uBuff)>'9'))
 		{
 			for(j=0;j<wSize;j++)
 			{
 				*(uBuff+j) = *(uData+j);
 			}
-			McuEepromWriteBuffer(uBuff, (1+i)<<6, 64);	
+			//McuEepromWriteBuffer(uBuff, (1+i)<<6, 64);	
 			return 1;
 		}
 		if(((*(uBuff+32))<'0')||((*(uBuff+32))>'9'))
@@ -693,7 +699,7 @@ u8 saveAddUser(u8 *uData,u8 wSize)
 			{
 				*(uBuff+32+j) = *(uData+j);
 			}
-			McuEepromWriteBuffer(uBuff, (1+i)<<6, 64);	
+			//McuEepromWriteBuffer(uBuff, (1+i)<<6, 64);	
 			return 1;
 		}
 	}
@@ -706,16 +712,16 @@ void saveFindSecretDelFromNum(u8 uNumber)
 	u8 uBuff[64];
 	for(i=0;i<20;i++)
 	{
-		McuEepromReadBuffer(uBuff, (11+i)<<6, 64);
+		//McuEepromReadBuffer(uBuff, (11+i)<<6, 64);
 		if(*(uBuff+1) == uNumber)
 		{
 			memsetStr(uBuff,0,32);
-			McuEepromWriteBuffer(uBuff, (11+i)<<6, 64);
+			//McuEepromWriteBuffer(uBuff, (11+i)<<6, 64);
 		}
 		if(*(uBuff+33) == uNumber)
 		{
 			memsetStr(uBuff+32,0,32);
-			McuEepromWriteBuffer(uBuff, (11+i)<<6, 64);
+			//McuEepromWriteBuffer(uBuff, (11+i)<<6, 64);
 		}
 
 	}
@@ -733,104 +739,48 @@ u8 memoffsetStr(u8 *uData,u8 findData,u8 uLength)
 	return i+1;
 }
 
-u8 findSecret(u8 *uSecret,u8 uLength)
+u8 btDelSecretUserInfo(u8 *uData,u8 operType)
 {
-	u8 i=0;
-	u8 uBuff[64];
-	u8 uSaveLength;
-	for(i=0;i<20;i++)
-	{
-		McuEepromReadBuffer(uBuff, (11+i)<<6, 64);
-		if((*(uBuff+1))&&((*(uBuff+1))<=0xf0))
-		{
-			uSaveLength = memoffsetStr(&uBuff[2],0xff,10);
-			if(uSaveLength > 10)
-			{
-				uSaveLength = 10;
-			}
-			if(uLength >= uSaveLength)
-			{
-				if(memcmpStr(uSecret,&uBuff[2],uSaveLength))
-				{
-					return uBuff[1];
-				}
-			}			
-		}
-		if((*(uBuff+33))&&((*(uBuff+33))<=0xf0))
-		{
-			uSaveLength = memoffsetStr(&uBuff[34],0xff,10);
-			if(uSaveLength > 10)
-			{
-				uSaveLength = 10;
-			}
-			if(uLength >= uSaveLength)
-			{
-				if(memcmpStr(uSecret,&uBuff[34],uSaveLength))
-				{
-					return uBuff[1];
-				}
-			}
-		}
+	u8 i=0,num=0;
+	u8 tmpData[10]={0};
+	u8 infoExist=0;
 
+	//通过手机号码判断用户是否存在
+	if (!getUserIsExist(uData)) return 0;
+	//判断此用户是否有权限操作
+	//判断要删除的内容是否存在
+	for (i=0;i<10;i++)
+		tmpData[i]=uData[18+i];
+
+
+	for (i=0;i<SECRET_INFO_NUM_MAX;i++)
+	{
+		if (!memcmp(tmpData,bleSecretInfo[i].secret,10))
+		{
+			num=i;
+			infoExist=1;
+		}
 	}
-	return 0;
-}
-
-u8 saveModifyOrDelUser(u8 *uData,u8 wSize,u8 modifyOrDel)
-{
-	u8 i=0,j=0;
-	u8 uBuff[64];
-	for(i=0;i<10;i++)
+	printf("num=%d, infoExist=%d\r\n",num,infoExist);
+	printf("operType=%d\r\n",operType);
+	//执行删除
+	if (infoExist)
 	{
-		McuEepromReadBuffer(uBuff, (1+i)<<6, 64);
-		for(j=0;j<11;j++)
+		for (i=num;i<SECRET_INFO_NUM_MAX;i++)
 		{
-			if((*(uData+j))!=(*(uBuff+j)))
-			{
-				break;
-			}
+			bleSecretInfo[num]=bleSecretInfo[i+1];
 		}
-		if(j==11)
-		{
-			for(j=0;j<32;j++)
-			{
-				if(modifyOrDel == BT_MODIFY_USER)
-				{
-					uBuff[j] = *(uData+j);
-				}
-				else
-				{
-					uBuff[j] = 0;
-					saveFindSecretDelFromNum(i*2+1);
-				}
-			}
-			McuEepromWriteBuffer(uBuff, (1+i)<<6, 64);				
-			return i+1;
-		}
-		for(j=0;j<11;j++)
-		{
-			if((*(uData+j))!=(*(uBuff+32+j)))
-			{
-				break;
-			}
-		}
-		if(j==11)
-		{
-			for(j=0;j<32;j++)
-			{
-				if(modifyOrDel == BT_MODIFY_USER)
-				{
-					uBuff[j] = *(uData+j);
-				}
-				else
-				{
-					uBuff[32+j] = 0;
-					saveFindSecretDelFromNum(i*2+2);
-				}
-			}
-			McuEepromWriteBuffer(uBuff, (1+i)<<6, 64);	
-			return i+1;
-		}		
+
+		if(operType == BT_DEL_NUMBER_SECRET) Admin_Flag[BT_Admin_Pswd]--;
+
+		if(operType == BT_DEL_NFC_SECRET) Admin_Flag[BT_Admin_RFID]--;
+
+		if(operType == BT_DEL_FINGER_SECRET) Admin_Flag[BT_Admin_FPRT]--;
+
+		Admin_Flag[BT_Admin]--; 
+		AudioPlay(AUDIO_PROMPT_DELETED);
+
+		return 1;
 	}
 	return 0;
 }
@@ -897,7 +847,7 @@ void saveNumFindPhone(u8 uIndex,u8 *uData)
 	}
 	else
 	{
-		McuEepromReadBuffer(uBuff, (1+(uIndex-1)/2)<<6, 64);
+		//McuEepromReadBuffer(uBuff, (1+(uIndex-1)/2)<<6, 64);
 		if((uIndex+1)%2)
 		{
 			memcpyStr(uData,uBuff,11);
@@ -928,7 +878,7 @@ u8 saveModifyOrDelFindUser(u8 *uData,u8 uLength)
 	
 	for(i=0;i<10;i++)
 	{
-		McuEepromReadBuffer(uBuff, (i+1)<<6, 64);
+		//McuEepromReadBuffer(uBuff, (i+1)<<6, 64);
 		for(j=0;j<uLength;j++)
 		{
 			if(*(uBuff+j) != *(uData+j))
@@ -971,7 +921,7 @@ u8 saveModifyOrDelFindSecret(u8 *uData,u8 uLength)
 	u8 uBuff[64];
 	for(i=0;i<20;i++)
 	{
-		McuEepromReadBuffer(uBuff, (11+i)<<6, 64);
+		//McuEepromReadBuffer(uBuff, (11+i)<<6, 64);
 		for(j=0;j<uLength;j++)
 		{
 			if(*(uBuff+2+j) != *(uData+j))
@@ -1010,7 +960,7 @@ u8 saveModifyOrDelFindAll(SecretType uSecret)
 	}*/
 	for(i=0;i<20;i++)
 	{
-		McuEepromReadBuffer(uBuff, (11+i)<<6, 64);
+		//McuEepromReadBuffer(uBuff, (11+i)<<6, 64);
 		//if((uBuff[1]==uSecret.number)
 		//&&(strComp(&uBuff[2],uSecret.secret,10))
 		if(strComp(&uBuff[2],uSecret.secret,10))
@@ -1048,10 +998,10 @@ u8 saveAdminSecret(u8 *uData,u8 wSize)
 		printf("phone[%d]=%x\r\n",i,currSecret.phone[i]);
 	}
 	
-	BtSaveFlashData(ADMIN_PSW_STR, currSecret,wSize);
+	btSaveFlashData(ADMIN_PSW_STR, currSecret);
 	return 1;
 }
-u8 saveAddSecret(u8 *uData,u8 wSize)
+u8 saveAddSecret(u8 *uData,u8 operType)
 {
 	u8 i=0;
 	u8 result=0;;
@@ -1061,25 +1011,31 @@ u8 saveAddSecret(u8 *uData,u8 wSize)
 		currSecret.secret[i]= uData[18+i];
 	}
 	//操作类型，用于后期判断是，数字密码、NFC、 指纹
-	currSecret.type = uData[39];
+	currSecret.type = operType;
 	printf("serc-type=%x\r\n",currSecret.type);
 	if (currSecret.type == BT_ADD_BLE_SECRET)
 	{
 		result=1;
-		BtSaveFlashData(ADMIN_BT_STR, currSecret,wSize);
+		btSaveFlashData(ADMIN_BT_STR, currSecret);
+		AudioPlay(AUDIO_PROMPT_PSWD_RECORD_SUCCESS);
+	}
+	else if (currSecret.type == BT_ADD_NUMBER_SECRET)
+	{
+		result=1;
+		btSaveFlashData(ADMIN_PSW_STR, currSecret);
 		AudioPlay(AUDIO_PROMPT_PSWD_RECORD_SUCCESS);
 	}
 	else if (currSecret.type == BT_ADD_NFC_SECRET)
 	{
 		result=1;
-		BtSaveFlashData(ADMIN_RFID_STR, currSecret,wSize);
-		AudioPlay(AUDIO_PROMPT_NFC_RECORD_SUCCESS);
+		btSaveFlashData(ADMIN_RFID_STR, currSecret);
+		//AudioPlay(AUDIO_PROMPT_NFC_RECORD_SUCCESS);
 	}
 	else if (currSecret.type == BT_ADD_FINGER_SECRET)
 	{
 		result=1;
-		BtSaveFlashData(ADMIN_FINGER_STR, currSecret,wSize);
-		AudioPlay(AUDIO_PROMPT_FGPRT_RECORD_SUCCESS);
+		btSaveFlashData(ADMIN_FINGER_STR, currSecret);
+		//AudioPlay(AUDIO_PROMPT_FGPRT_RECORD_SUCCESS);
 	}
 	else
 	{
@@ -1101,6 +1057,68 @@ u8 saveModifyOrDelSecret(u8 *uData,u8 wSize)
 	//将数据链表重新排序
 
 	return 0;
+}
+
+void btSaveFlashData(u8 data_type, SecretType data)
+{
+	u8 i=0;
+	if (data_type == ADMIN_PSW_STR)
+	{
+			//添加手机号码
+			for (i=0; i<11; i++)
+				bleSecretInfo[Admin_Flag[BT_Admin]].phone[i] = data.phone[i];
+			
+			//添加密码
+			for (i=0; i<10; i++)
+			{
+				bleSecretInfo[Admin_Flag[BT_Admin]].secret[i] = data.secret[i];
+				printf("secret[%d]=%x\r\n",i,bleSecretInfo[Admin_Flag[BT_Admin]].secret[i]);
+			}
+
+			bleSecretInfo[Admin_Flag[BT_Admin]].type = data_type;
+			Admin_Flag[BT_Admin_Pswd]++;
+			
+			printf("save digit-pwd\r\n");
+			
+	}
+	else if (data_type == ADMIN_RFID_STR)
+	{
+		for (i=0; i<10; i++)
+		{
+			bleSecretInfo[Admin_Flag[BT_Admin]].secret[i] = data.secret[i];
+			//printf("save[%d]=0x%x\r\n",i,data.secret[i]);
+		}
+		bleSecretInfo[Admin_Flag[BT_Admin]].type = data_type;
+		Admin_Flag[BT_Admin_RFID]++;
+	}
+	else if (data_type == ADMIN_FINGER_STR)
+	{
+		bleSecretInfo[Admin_Flag[BT_Admin]].secret[0] = data.secret[0];
+		bleSecretInfo[Admin_Flag[BT_Admin]].type = data_type;
+		//Admin_Flag[BT_Admin_FPRT]++;
+	}
+	else if (data_type == ADMIN_BT_STR)
+	{
+		if (data.type == BT_ADD_BLE_SECRET)
+		{
+			for (i=0; i<10; i++)
+			{
+				bleSecretInfo[Admin_Flag[BT_Admin]].secret[i] = data.secret[i];
+				printf("save-BT[%d]=0x%x\r\n",i,data.secret[i]);
+			}
+
+			bleSecretInfo[Admin_Flag[BT_Admin]].type = data_type;
+		}
+	}
+
+	printf("s-user =%d\r\n",Admin_Flag[BT_Admin]);
+	SaveData_Inf(BT_Secret_Data, BT_Secret_Data);
+	if (data_type)
+	{
+		Admin_Flag[BT_Admin]++; 
+	}
+	printf("s-sys=%d\r\n",Admin_Flag[BT_Admin]);
+	SaveData_Inf(BT_System_Data, BT_System_Page);
 }
 
 #endif

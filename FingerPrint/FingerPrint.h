@@ -37,6 +37,7 @@ typedef enum{
 }CMD_ENUM;
 
 typedef enum{
+	Reslut_None,
 	Result_Succes,
 	Result_Failed,
 	Result_Timeout,

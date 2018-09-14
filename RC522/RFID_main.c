@@ -365,7 +365,7 @@ int RFID_Compare(void)
 }
 
 u8 RFIDCnt=0;
-u8 RFIDData[4];
+u8 RFIDData[4]={0};
 //ADMIN_RFID_STR
 
 void hexToBCD(u8 *uData1,u8 *uData2,u8 uLength)
@@ -379,6 +379,8 @@ void hexToBCD(u8 *uData1,u8 *uData2,u8 uLength)
 }
 
 u8 uTemp[12];
+extern SecretType bleSecretInfo[SECRET_INFO_NUM_MAX];
+
 u8 RFIDTouchHave(u8 uType,u8 *uData,u8 uLength)
 {
 	u8 i=0;
@@ -415,8 +417,7 @@ u8 RFIDTouchHave(u8 uType,u8 *uData,u8 uLength)
 	for (i=0; i<Admin_Flag[BT_Admin];i++)
 	{
 		//验证NFC
-		if ((bleSecretInfo[i].type == BT_ADD_NFC_SECRET)
-				|| (bleSecretInfo[i].timers == BT_MODIFY_NFC_SECRET))
+		if ((bleSecretInfo[i].type == ADMIN_RFID_STR))
 		{
 			printf("RFID1111=0x%x0x%x0x%x0x%x\r\n",RFIDData[0],RFIDData[1],RFIDData[2],RFIDData[3]);
 			if ((bleSecretInfo[i].secret[0] == RFIDData[0])
@@ -506,7 +507,7 @@ void RFIDPro(void)
 			AudioPlay(AUDIO_PROMPT_NFC_RECORD_SUCCESS); //卡登记成功
 				//printf("RFIDData=0x%x0x%x0x%x0x%x\r\n",RFIDData[0],RFIDData[1],RFIDData[2],RFIDData[3]);
 			touchTimer = 0;
-			sysFlg = 0;
+			sysAddDeviceState = 1;
 		}
 		#endif
 		else

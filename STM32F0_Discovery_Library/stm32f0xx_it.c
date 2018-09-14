@@ -313,13 +313,14 @@ void EXTI2_3_IRQHandler(void)
 		}
 		sleepBuff = 0;
     }
-
+#if 0
 	if(EXTI_GetITStatus(EXTI_Line3 ) != RESET)
 	{
 		EXTI_ClearITPendingBit(EXTI_Line3);
 		sleepBuff = 0;
 		sleepFlg = SLEEP_WAKE_READY;
 	}
+#endif
 }
 
 void EXTI4_15_IRQHandler(void)
