@@ -57,7 +57,9 @@ u8 sysAddDeviceState=0;
 u8 keySetupFlg=0;
 u8 keySetupBuff=0;
 u8 keySetupCnt=0;
-extern volatile unsigned char B3TimeFlg; 		
+extern volatile unsigned char B3TimeFlg; 	
+
+extern SecretType bleUserInfo[USER_INFO_NUM_MAX];
 extern SecretType bleSecretInfo[SECRET_INFO_NUM_MAX];
 
 
@@ -205,56 +207,7 @@ u8 touchCmp(void)
 }
 
 void save(u8 pswdRfidTouch,u8 *dData,u8 uLength)
-{
-	u8 i =0;
-	if(pswdRfidTouch == ADMIN_PSW_STR)
-	{
-		UserInfo[Flag_Inf[ADMIN]].Userflag = pswdRfidTouch;
-		UserInfo[Flag_Inf[ADMIN]].User_Info_CNT = uLength;
-		for(i=0;i<6;i++)
-		{
-			UserInfo[Flag_Inf[ADMIN]].Info[i] = ((*(dData+i*2))<<4)|(*(dData+i*2+1));//(touchData[0][touchTimer*2]<<4)|(touchData[0][touchTimer*2+1]);
-		}
-		Flag_Inf[Admin_Pswd] ++; 
-	}
-	else if(pswdRfidTouch == ADMIN_RFID_STR)
-	{
-		UserInfo[Flag_Inf[ADMIN]].Userflag = pswdRfidTouch;
-		UserInfo[Flag_Inf[ADMIN]].User_Info_CNT = uLength;
-		for(i=0;i<uLength;i++)
-		{
-			UserInfo[Flag_Inf[ADMIN]].Info[i] = *(dData+i);//(touchData[0][touchTimer*2]<<4)|(touchData[0][touchTimer*2+1]);
-		}
-		Flag_Inf[Admin_RFID] ++; 
-	}
-	else if(pswdRfidTouch == ADMIN_FINGER_STR)
-	{
-		UserInfo[Flag_Inf[ADMIN]].Userflag = pswdRfidTouch;
-		UserInfo[Flag_Inf[ADMIN]].User_Info_CNT = uLength;
-		UserInfo[Flag_Inf[ADMIN]].Info[0] = *dData;//(touchData[0][touchTimer*2]<<4)|(touchData[0][touchTimer*2+1]);
-		Flag_Inf[Admin_FPRT] ++; 
-	}
-	else if(pswdRfidTouch == ADMIN_BT_STR)
-	{
-		UserInfo[Flag_Inf[ADMIN]].Userflag = pswdRfidTouch;
-		UserInfo[Flag_Inf[ADMIN]].User_Info_CNT = uLength;
-		for(i=0;i<uLength;i++)
-		{
-			UserInfo[Flag_Inf[ADMIN]].Info[i] = *(dData+i);//(touchData[0][touchTimer*2]<<4)|(touchData[0][touchTimer*2+1]);
-		}
-		Flag_Inf[Admin_BT] ++; 
-	}
-	else
-	{
-		UserInfo[Flag_Inf[ADMIN]].Userflag = 0;
-	}
-	SaveData_Inf(User_Data, USER_Data_0);
-	if(pswdRfidTouch)
-	{
-		Flag_Inf[ADMIN] ++; 
-	}
-	SaveData_Inf(System_Data, System_Data_0);
-}
+{}
 
 void touchCheckAddAdmin(void)
 {
@@ -277,7 +230,6 @@ u8 touchCheckIsAdmin(void)
 	u8 pwdH=0,pwdL=0;
 	u8 tmpPwd[6];
 	
-	#ifdef __BLUETOOTH_SUPPORT__
 	if (Admin_Flag[BT_Admin_Pswd]==0) return 0;
 
 	for (i=0;i<Admin_Flag[BT_Admin];i++)
@@ -313,38 +265,7 @@ u8 touchCheckIsAdmin(void)
 	}
 
 	return result;
-	#else
-	for(i=0;i<Flag_Inf[ADMIN];i++)
-	{
-		if(keyCnt == UserInfo[i].User_Info_CNT)
-		{
-			for(j=0;j<6;j++)
-			{
-				userInfoTemp[j*2] = UserInfo[i].Info[j]/16;
-				userInfoTemp[j*2+1] = UserInfo[i].Info[j]%16;
-			}
-			for(j=0;j<UserInfo[i].User_Info_CNT;j++)
-			{
-				if(touchData[0][j] != userInfoTemp[j])
-				{
-					break;
-				}
-			}
-			if(j == UserInfo[i].User_Info_CNT)
-			{
-				break;
-			}
-		}
-	}
-	if(i != Flag_Inf[ADMIN])
-	{
-		return i+1;
-	}
-	else
-	{
-		return 0;
-	}
-	#endif
+
 }
 
 void timeOut()
@@ -474,7 +395,7 @@ void touchCheck(void)
 		{
             touchData[touchTimer][i]=keyNum[i];
 		}
-		
+		#if 0
 		if(sysFlg&SYS_SETUP)
 		{
 			if(RFIDTouchHave(ADMIN_PSW_STR,&touchData[touchTimer][0],keyCnt))
@@ -498,6 +419,7 @@ void touchCheck(void)
 			touchCheckEffi();
 		}
 		else
+		#endif
 		{
 			touchCheckOpen();			
 		}
@@ -618,27 +540,9 @@ UserType currUser;
 extern u8 getData[64];
 
 
-u8 getBtAdminSecret(u8 *uData)
-{
-	u8 i=0,j=0;
-	for(i=0;i<32;i++)
-	{
-		if(getData[i] == ADMIN_BT_STR)
-		{
-			for(j=0;j<6;j++)
-			{
-				*(uData+j) = getData[i];
-			}
-			return i+1;
-		}
-		
-	}
-	return 0;
-}
-
 /***********************************************************************
-*函数名 getUserIsExist
-*功能:  判断用户是否存在 通过手机号
+*函数名 getSecretUserIsExist
+*功能:  判断用户表中用户是否存在 通过手机号
 ***********************************************************************/
 u8 getUserIsExist(u8 *uData)
 {
@@ -647,13 +551,45 @@ u8 getUserIsExist(u8 *uData)
 
 	for (i=0;i<11;i++)
 	{
-		phoneNum[i]=uData[2+i];
+		phoneNum[i]=uData[18+i];
+		//printf("phoneNum[%d]=%x\r\n",i,phoneNum[i]);
 	}
 
 	//比较
 	for (i=0;i<USER_INFO_NUM_MAX;i++)
 	{
-		if (!memcmp(phoneNum,bleSecretInfo[i].phone,11))
+		//printf("del-cmp=%d\r\n",memcmp(phoneNum,bleUserInfo[i].phone,11));
+		if (!memcmpStr(phoneNum,bleUserInfo[i].phone,11))
+		{
+
+			return 1;
+		}
+	}
+	
+	return 0;
+}
+
+
+/***********************************************************************
+*函数名 getSecretUserIsExist
+*功能:  判断密码表中用户是否存在 通过手机号
+***********************************************************************/
+u8 getSecretUserIsExist(u8 *uData)
+{
+	u8 i=0;
+	u8 phoneNum[11]={0};
+
+	for (i=0;i<11;i++)
+	{
+		phoneNum[i]=uData[1+i];
+		//printf("phoneNum[%d]=%x\r\n",i,phoneNum[i]);
+	}
+
+	//比较
+	for (i=0;i<USER_INFO_NUM_MAX;i++)
+	{
+		//printf("del-cmp=%d\r\n",memcmp(phoneNum,bleSecretInfo[i].phone,11));
+		if (!memcmpStr(phoneNum,bleSecretInfo[i].phone,11))
 		{
 
 			return 1;
@@ -673,37 +609,31 @@ void defaultData()
 //user bank1到bank10  最大到31
 //secret bank 11到30
 //record bank 31
-u8 saveAddUser(u8 *uData,u8 wSize)
+u8 saveAddUser(u8 *uData,u8 uLen)
 {
-	u8 i=0,j=0;
-	u8 uBuff[64];
-	if(saveModifyOrDelFindUser(uData,wSize))
+	u8 i=0;
+
+	//通过手机号码判断用户是否存在
+	if (getUserIsExist(uData)==1) return 0;
+
+	//添加用户
+	//获取用户手机号
+	for (i=0;i<11;i++)
 	{
-		return 0xff;
+		currUser.phone[i]=uData[18+i];
 	}
-	for(i=0;i<10;i++)
-	{
-		//McuEepromReadBuffer(uBuff, (1+i)<<6, 64);
-		if(((*uBuff)<'0')||((*uBuff)>'9'))
-		{
-			for(j=0;j<wSize;j++)
-			{
-				*(uBuff+j) = *(uData+j);
-			}
-			//McuEepromWriteBuffer(uBuff, (1+i)<<6, 64);	
-			return 1;
-		}
-		if(((*(uBuff+32))<'0')||((*(uBuff+32))>'9'))
-		{
-			for(j=0;j<wSize;j++)
-			{
-				*(uBuff+32+j) = *(uData+j);
-			}
-			//McuEepromWriteBuffer(uBuff, (1+i)<<6, 64);	
-			return 1;
-		}
-	}
-	return 0;
+	//获取用户密码
+	for (i=0;i<6;i++)
+		currUser.secret[i]=uData[29+i];
+	//获取时间
+	//获取权限
+	for (i=0;i<3;i++)
+		currUser.secret[i]=uData[uLen-5+i];
+
+	btSaveUserFlashData(currUser);
+	AudioPlay(AUDIO_PROMPT_RECORD_SAVED);
+	printf("save succ\r\n");
+	return 1;
 }
 
 void saveFindSecretDelFromNum(u8 uNumber)
@@ -746,23 +676,21 @@ u8 btDelSecretUserInfo(u8 *uData,u8 operType)
 	u8 infoExist=0;
 
 	//通过手机号码判断用户是否存在
-	if (!getUserIsExist(uData)) return 0;
+	if (getSecretUserIsExist(uData)==0) return 1;
 	//判断此用户是否有权限操作
 	//判断要删除的内容是否存在
 	for (i=0;i<10;i++)
 		tmpData[i]=uData[18+i];
-
-
+		
 	for (i=0;i<SECRET_INFO_NUM_MAX;i++)
 	{
-		if (!memcmp(tmpData,bleSecretInfo[i].secret,10))
+		if (!memcmpStr(tmpData,bleSecretInfo[i].secret,10))
 		{
 			num=i;
 			infoExist=1;
 		}
 	}
-	printf("num=%d, infoExist=%d\r\n",num,infoExist);
-	printf("operType=%d\r\n",operType);
+
 	//执行删除
 	if (infoExist)
 	{
@@ -778,7 +706,11 @@ u8 btDelSecretUserInfo(u8 *uData,u8 operType)
 		if(operType == BT_DEL_FINGER_SECRET) Admin_Flag[BT_Admin_FPRT]--;
 
 		Admin_Flag[BT_Admin]--; 
-		AudioPlay(AUDIO_PROMPT_DELETED);
+
+		SaveData_Inf(BT_Secret_Data, BT_Secret_Page);
+		SaveData_Inf(BT_System_Data, BT_System_Page);
+		
+		AudioPlay(AUDIO_PROMPT_DATA_CLEARED);
 
 		return 1;
 	}
@@ -988,14 +920,14 @@ u8 saveAdminSecret(u8 *uData,u8 wSize)
 	//解析新密码
 	for(i=0;i<6;i++)
 	{
-		currSecret.secret[i]= uData[38+i]-0x30;
-		printf("secret[%d]=%x\r\n",i,currSecret.secret[i]);
+		currSecret.secret[i]= uData[38+i];
+		//printf("secret[%d]=%x\r\n",i,currSecret.secret[i]);
 	}
 	//解析手机号码
 	for(i=0;i<11;i++)
 	{
-		currSecret.phone[i]= uData[21+i]-0x30;
-		printf("phone[%d]=%x\r\n",i,currSecret.phone[i]);
+		currSecret.phone[i]= uData[21+i];
+		//printf("phone[%d]=%x\r\n",i,currSecret.phone[i]);
 	}
 	
 	btSaveFlashData(ADMIN_PSW_STR, currSecret);
@@ -1010,6 +942,11 @@ u8 saveAddSecret(u8 *uData,u8 operType)
 		//用于获取数据包中密码、NFC uuid, 指纹信息
 		currSecret.secret[i]= uData[18+i];
 	}
+	
+	//手机号处理
+	for (i=0;i<11;i++)
+		currSecret.phone[i]= uData[1+i];
+	
 	//操作类型，用于后期判断是，数字密码、NFC、 指纹
 	currSecret.type = operType;
 	printf("serc-type=%x\r\n",currSecret.type);
@@ -1044,20 +981,6 @@ u8 saveAddSecret(u8 *uData,u8 operType)
 	
 	return result;
 }
-// SECRET MODIFY OR DEL
-u8 saveModifyOrDelSecret(u8 *uData,u8 wSize)
-{
-	//u8 i=0;
-	//u8 uBuff[64];
-	u8 userNumber = saveModifyOrDelFindUser(uData+1,11);
-
-	//通过手机号判断用户是否存在
-	//判断删除什么类型数据
-	//执行删除操作
-	//将数据链表重新排序
-
-	return 0;
-}
 
 void btSaveFlashData(u8 data_type, SecretType data)
 {
@@ -1083,10 +1006,12 @@ void btSaveFlashData(u8 data_type, SecretType data)
 	}
 	else if (data_type == ADMIN_RFID_STR)
 	{
+		for(i=0;i<11; i++)
+			bleSecretInfo[Admin_Flag[BT_Admin]].phone[i] = data.phone[i];
+		
 		for (i=0; i<10; i++)
 		{
 			bleSecretInfo[Admin_Flag[BT_Admin]].secret[i] = data.secret[i];
-			//printf("save[%d]=0x%x\r\n",i,data.secret[i]);
 		}
 		bleSecretInfo[Admin_Flag[BT_Admin]].type = data_type;
 		Admin_Flag[BT_Admin_RFID]++;
@@ -1099,8 +1024,12 @@ void btSaveFlashData(u8 data_type, SecretType data)
 	}
 	else if (data_type == ADMIN_BT_STR)
 	{
-		if (data.type == BT_ADD_BLE_SECRET)
-		{
+			for(i=0;i<11; i++)
+			{
+				//printf("bt-phone[%d]=0x%x\r\n",i,data.phone[i]);
+				bleSecretInfo[Admin_Flag[BT_Admin]].phone[i] = data.phone[i];
+			}
+					
 			for (i=0; i<10; i++)
 			{
 				bleSecretInfo[Admin_Flag[BT_Admin]].secret[i] = data.secret[i];
@@ -1108,19 +1037,38 @@ void btSaveFlashData(u8 data_type, SecretType data)
 			}
 
 			bleSecretInfo[Admin_Flag[BT_Admin]].type = data_type;
-		}
 	}
 
-	printf("s-user =%d\r\n",Admin_Flag[BT_Admin]);
-	SaveData_Inf(BT_Secret_Data, BT_Secret_Data);
+	//printf("s-user =%d\r\n",Admin_Flag[BT_Admin]);
+	SaveData_Inf(BT_Secret_Data, BT_Secret_Page);
 	if (data_type)
 	{
 		Admin_Flag[BT_Admin]++; 
 	}
-	printf("s-sys=%d\r\n",Admin_Flag[BT_Admin]);
+	//printf("s-sys=%d\r\n",Admin_Flag[BT_Admin]);
 	SaveData_Inf(BT_System_Data, BT_System_Page);
 }
 
+void btSaveUserFlashData(UserType data)
+{
+	u8 i=0;
+	//手机号码
+	for (i=0;i<11;i++)
+		bleUserInfo[Admin_Flag[BT_User]].phone[i]=data.phone[i];
+	
+	//用户密码
+		for (i=0;i<11;i++)
+			bleUserInfo[Admin_Flag[BT_User]].secret[i]=data.secret[i];
+	//时间
+	
+	//权限
+	for (i=0;i<3;i++)
+		bleUserInfo[Admin_Flag[BT_User]].secret[i]=data.secret[i];
+
+	Admin_Flag[BT_User]++;
+	SaveData_Inf(BT_User_Data, BT_User_Page);
+	SaveData_Inf(BT_System_Data, BT_System_Page);
+}
 #endif
 
 

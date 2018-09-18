@@ -3,18 +3,14 @@
 
 uint8_t Flash_Buffer[1024] = {0xff}; 
 u8 Flag_Inf[ADD_MAX]={0};
-User_Info UserInfo[100];
-Open_Info OpenInfo[125];
+//User_Info UserInfo[100];
+//Open_Info OpenInfo[125];
 u8 getData[ADD_MAX]={0};
 
 UserType bleUserInfo[USER_INFO_NUM_MAX];
 SecretType bleSecretInfo[SECRET_INFO_NUM_MAX];
-u8 Admin_Flag[BT_Admin_Max]={0};
+u8 Admin_Flag[BT_Flag_Max]={0};
 u8 BluetoothMac[BULETOOTH_MAC_MAX]={0};
-
-
-
-
 
 
 
@@ -142,237 +138,6 @@ void Flash_Read_Page(uint8_t Data_Page, uint8_t *read_data)
 ----------------------------------------------------------
 ----------------------------------------------------------
 */
-#if 0
-void Check_Flash(void)
-{
-	uint32_t Rx0_crc;
-	uint32_t Rx0_sum;
-	uint32_t Rx0_MIRROR_crc;
-	uint32_t Rx0_MIRROR_sum;
-	
-	uint32_t Rx1_crc;
-	uint32_t Rx1_sum;
-	uint32_t Rx1_MIRROR_crc;
-	uint32_t Rx1_MIRROR_sum;
-
-	uint32_t Rx2_crc;
-	uint32_t Rx2_sum;
-	uint32_t Rx2_MIRROR_crc;
-	uint32_t Rx2_MIRROR_sum;
-
-	uint32_t Rx3_crc;
-	uint32_t Rx3_sum;
-	uint32_t Rx3_MIRROR_crc;
-	uint32_t Rx3_MIRROR_sum;
-
-	uint32_t Rx4_crc;
-	uint32_t Rx4_sum;
-	uint32_t Rx4_MIRROR_crc;
-	uint32_t Rx4_MIRROR_sum;
-
-	uint32_t Rx5_crc;
-	uint32_t Rx5_sum;
-	uint32_t Rx5_MIRROR_crc;
-	uint32_t Rx5_MIRROR_sum;
-
-	uint32_t Rx6_crc;
-	uint32_t Rx6_sum;
-	uint32_t Rx6_MIRROR_crc;
-	uint32_t Rx6_MIRROR_sum;
-
-	uint16_t loop;
-
-/************************************************
-
-				用户数据0区
-
-*************************************************/
-	Flash_Read_Page(USER_Data_0, Flash_Buffer);
-	loop = 800;
-	Rx0_crc = 0;
-	while(loop--)
-	{
-		Rx0_crc+=Flash_Buffer[loop];
-	}
-	memcpy(&Rx0_sum, Flash_Buffer+1020, 4); 
-
-	Flash_Read_Page(USER_Data_MIRROR_0, Flash_Buffer);
-	loop = 800;
-	Rx0_MIRROR_crc = 0;
-	while(loop--)
-	{
-		Rx0_MIRROR_crc+=Flash_Buffer[loop];
-	}
-	memcpy(&Rx0_MIRROR_sum, Flash_Buffer+1020, 4);
-	
-	Check_Data_CRC(Rx0_crc, Rx0_sum, Rx0_MIRROR_crc, Rx0_MIRROR_sum, USER_Data_0, USER_Data_MIRROR_0);
-
-/************************************************
-
-				用户数据1区
-
-*************************************************/
-	Flash_Read_Page(USER_Data_1, Flash_Buffer);
-	loop = 800;
-	Rx1_crc=0;
-	while(loop--)
-	{
-		Rx1_crc+=Flash_Buffer[loop];
-	}
-	memcpy(&Rx1_sum, Flash_Buffer+1020, 4);	
-
-	Flash_Read_Page(USER_Data_MIRROR_1, Flash_Buffer);
-	loop = 800;
-	Rx1_MIRROR_crc=0;
-	while(loop--)
-	{
-		Rx1_MIRROR_crc+=Flash_Buffer[loop];
-	}
-	memcpy(&Rx1_MIRROR_sum, Flash_Buffer+1020, 4);
-	
-	Check_Data_CRC(Rx1_crc, Rx1_sum, Rx1_MIRROR_crc, Rx1_MIRROR_sum, USER_Data_1, USER_Data_MIRROR_1);
-
-/************************************************
-
-				用户数据2区
-
-*************************************************/
-	Flash_Read_Page(USER_Data_2, Flash_Buffer);
-	loop = 800;
-	Rx2_crc=0;
-	while(loop--)
-	{
-		Rx2_crc+=Flash_Buffer[loop];
-	}
-	memcpy(&Rx2_sum, Flash_Buffer+1020, 4);
-
-	Flash_Read_Page(USER_Data_MIRROR_2, Flash_Buffer);
-	loop = 800;
-	Rx2_MIRROR_crc=0;
-	while(loop--)
-	{
-		Rx2_MIRROR_crc+=Flash_Buffer[loop];
-	}
-	memcpy(&Rx2_MIRROR_sum, Flash_Buffer+1020, 4);
-	
-	Check_Data_CRC(Rx2_crc, Rx2_sum, Rx2_MIRROR_crc, Rx2_MIRROR_sum, USER_Data_2, USER_Data_MIRROR_2);
-
-
-/************************************************
-
-				系统数据1区
-
-*************************************************/
-
-	Flash_Read_Page(System_Data_0, Flash_Buffer);
-	loop = 40;
-	Rx3_crc=0;
-	while(loop--)
-	{
-		Rx3_crc+=Flash_Buffer[loop];
-	}
-	memcpy(&Rx3_sum, Flash_Buffer+1020, 4);
-
-
-	Flash_Read_Page(System_Data_MIRROR_0, Flash_Buffer);
-	loop = 40;
-	Rx3_MIRROR_crc=0;
-	while(loop--)
-	{
-		Rx3_MIRROR_crc+=Flash_Buffer[loop];
-	}
-	memcpy(&Rx3_MIRROR_sum, Flash_Buffer+1020, 4);
-	
-	Check_Data_CRC(Rx3_crc, Rx3_sum, Rx3_MIRROR_crc, Rx3_MIRROR_sum, System_Data_0, System_Data_MIRROR_0);
-
-
-
-/************************************************
-
-				开门记录0区
-
-*************************************************/
-
-	Flash_Read_Page(Open_Info_Data_0, Flash_Buffer);
-	loop = 1000;
-	Rx4_crc=0;
-	while(loop--)
-	{
-		Rx4_crc+=Flash_Buffer[loop];
-	}
-	memcpy(&Rx4_sum, Flash_Buffer+1020, 4);
-
-	Flash_Read_Page(Open_Info_Data_MIRROR_0, Flash_Buffer);
-	loop = 1000;
-	Rx4_MIRROR_crc=0;
-	while(loop--)
-	{
-		Rx4_MIRROR_crc+=Flash_Buffer[loop];
-	}
-	memcpy(&Rx4_MIRROR_sum, Flash_Buffer+1020, 4);
-	
-	Check_Data_CRC(Rx4_crc, Rx4_sum, Rx4_MIRROR_crc, Rx4_MIRROR_sum, Open_Info_Data_0, Open_Info_Data_MIRROR_0);
-
-
-
-/************************************************
-
-				开门记录1区
-
-*************************************************/
-
-	Flash_Read_Page(Open_Info_Data_1, Flash_Buffer);
-	loop = 1000;
-	Rx5_crc=0;
-	while(loop--)
-	{
-		Rx5_crc+=Flash_Buffer[loop];
-	}
-	memcpy(&Rx5_sum, Flash_Buffer+1020, 4);
-
-	Flash_Read_Page(Open_Info_Data_MIRROR_1, Flash_Buffer);
-	loop = 1000;
-	Rx5_MIRROR_crc=0;
-	while(loop--)
-	{
-		Rx5_MIRROR_crc+=Flash_Buffer[loop];
-	}
-	memcpy(&Rx5_MIRROR_sum, Flash_Buffer+1020, 4);
-	
-	Check_Data_CRC(Rx5_crc, Rx5_sum, Rx5_MIRROR_crc, Rx5_MIRROR_sum, Open_Info_Data_1, Open_Info_Data_MIRROR_1);
-
-
-/************************************************
-
-				开门记录2区
-
-*************************************************/
-
-	Flash_Read_Page(Open_Info_Data_2, Flash_Buffer);
-	loop = 1000;
-	Rx6_crc=0;
-	while(loop--)
-	{
-		Rx6_crc+=Flash_Buffer[loop];
-	}
-	memcpy(&Rx6_sum, Flash_Buffer+1020, 4);
-
-
-	Flash_Read_Page(Open_Info_Data_MIRROR_2, Flash_Buffer);
-	loop = 1000;
-	Rx6_MIRROR_crc=0;
-	while(loop--)
-	{
-		Rx6_MIRROR_crc+=Flash_Buffer[loop];
-	}
-	memcpy(&Rx6_MIRROR_sum, Flash_Buffer+1020, 4);
-	
-	Check_Data_CRC(Rx6_crc, Rx6_sum, Rx6_MIRROR_crc, Rx6_MIRROR_sum, Open_Info_Data_2, Open_Info_Data_MIRROR_2);
-
-
-
-}
-#endif
 
 void Read_flash_Data(uint8_t Flash_Block ,uint8_t Data_Page)
 {	
@@ -381,20 +146,7 @@ void Read_flash_Data(uint8_t Flash_Block ,uint8_t Data_Page)
 	__disable_irq();
 	
 	Flash_Read_Page(Data_Page, Flash_Buffer);
-	#if 0
-	if(Flash_Block == User_Data)
-	{
-		memcpy(UserInfo,Flash_Buffer,800);
-	}
-	else if(Flash_Block == System_Data)
-	{
-		memcpy(Flag_Inf,Flash_Buffer,40);
-	}
-	else if(Flash_Block == Open_Info_Data)
-	{
-		memcpy(OpenInfo,Flash_Buffer,1000);
-	}
-	#endif
+
 	if(Flash_Block == BT_User_Data)
 	{
 		memcpy(bleUserInfo,Flash_Buffer,sizeof(bleUserInfo));
@@ -420,44 +172,6 @@ void SaveData_Inf(uint8_t Flash_data,uint8_t Page)
 	Usart2_Disable();
 	__disable_irq();
 
-	#if 0
-	if(Flash_data == User_Data)
-	{
-		loop = 800;
-		memcpy(Flash_Buffer, UserInfo, 800);
-		Rx_crc=0;
-		while(loop--)
-		{
-			Rx_crc+=Flash_Buffer[loop];
-		}
-		memcpy(Flash_Buffer+1020, &Rx_crc, 4);
-	}
-	else if(Flash_data == System_Data)
-	{
-		loop = 40;
-		memcpy(Flash_Buffer, Flag_Inf, 40);
-		Rx_crc=0;
-		while(loop--)
-		{
-			Rx_crc+=Flash_Buffer[loop];
-		}
-		memcpy(Flash_Buffer+1020, &Rx_crc, 4);
-	}
-	else if(Flash_data == Open_Info_Data)
-	{
-		loop = 1000;
-		memcpy(Flash_Buffer, OpenInfo, 1000);
-		Rx_crc=0;
-		while(loop--)
-		{
-			Rx_crc+=Flash_Buffer[loop];
-		}
-		memcpy(Flash_Buffer+1020, &Rx_crc, 4);
-	}
-
-	Flash_Write_Page(Page, Flash_Buffer);
-	Flash_Write_Page(Page-7, Flash_Buffer);
-	#endif
 	if(Flash_data == BT_User_Data)
 	{
 		memcpy(Flash_Buffer, bleUserInfo, sizeof(bleUserInfo));
@@ -477,25 +191,4 @@ void SaveData_Inf(uint8_t Flash_data,uint8_t Page)
 	Usart1_init();
 	Usart2_init();
 }
-#if 0
-void Check_Data_CRC(uint32_t D_CRC, uint32_t D_CRC_SUM, uint32_t D_CRC_MIRROR, uint32_t D_CRC_MIRROR_SUM, uint8_t DATA, uint8_t DATA_MIRROR)
-{
-	if(D_CRC != D_CRC_SUM)
-	{
-		if(D_CRC_MIRROR == D_CRC_MIRROR_SUM)
-		{
-			Flash_Read_Page(DATA_MIRROR, Flash_Buffer);
-			Flash_Write_Page(DATA, Flash_Buffer);
-		}
-	}
-	if(D_CRC_MIRROR != D_CRC_MIRROR_SUM)
-	{
-		if(D_CRC == D_CRC_SUM)
-		{
-			Flash_Read_Page(DATA, Flash_Buffer);
-			Flash_Write_Page(DATA_MIRROR, Flash_Buffer);
-		}
-	}
-}
-#endif
 

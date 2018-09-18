@@ -100,190 +100,11 @@ uint8_t RFID_Init( uint8_t *uid , uint8_t loop )
 	
 }
 
-#if 0
-
-int RFID_AddPICC(uint8_t UserID)
-{
-	uint8_t Admin_CNT = 0, User_CNT = 0;
-	unsigned char tmp[4];
-	char Numstr[3];
-	uint8_t i,status,remap,IC_CNT;
-	i = Check_Admin();
-	if(UserID == Root && i == 1)
-	{
-		AudioPlay(AUDIO_PROMPT_STORAGE_FULL);
-		return -1;
-	}
-	
-	for (IC_CNT = 0; IC_CNT<50 ;IC_CNT++)
-	{
-		if (ICcardInf[IC_CNT].useflag== 255 || ICcardInf[IC_CNT].useflag==0)
-		{
-			break;
-		}
-	}	
-	if (IC_CNT == 50)
-	{
-	#ifdef __DEBUG2__
-		printf("RFID Cards Full");
-	#endif
-		AudioPlay_All(AUDIO_PROMPT_NFC, AUDIO_PROMPT_STORAGE_FULL, AUDIO_PROMPT_NONE);
-		return -1;
-	}
-
-	remap = Flag_Inf[Admin_RFID] + Flag_Inf[User_RFID];
-
-	if(permissions == Root)
-	{
-		for(i = 0;i <= IC_CNT;i++)
-		{
-			if(ICcardInf[i].useflag == Root)
-			{
-				Admin_CNT++;
-			}
-		}
-		OLED_EnterInfo(Admin_CNT+1 ,Root, remap);
-	}
-	if(permissions == User)
-	{
-		for(i = 0;i <= IC_CNT;i++)
-		{
-			if(ICcardInf[i].useflag == User)
-			{
-				User_CNT++;
-			}
-		}
-		OLED_EnterInfo(User_CNT+1, User, remap);
-	}
-	
-	
-	remap = IC_CNT;
-	AudioPlay(AUDIO_PROMPT_INPUT_NFC);
-	soft_delay_ms(50);
-	AudioPlay(AUDIO_PROMPT_BI);
-	i=3;
-	while(i--)
-	{
-		status = RFID_Init( tmp, 50);
-		if (!status)
-			break;
-		AudioPlay_All(AUDIO_PROMPT_NFC, AUDIO_PROMPT_VALIDATION_FAIL, AUDIO_PROMPT_TRY_AGAIN);
-	}
-	
-	i=0;
-	if (!status)
-	{
-		AudioPlay(AUDIO_PROMPT_BI);
-		while ( i<50 )
-		{
-			if (ICcardInf[i].uid[0]==tmp[0] &&\
-				ICcardInf[i].uid[1]==tmp[1] &&\
-				ICcardInf[i].uid[2]==tmp[2] &&\
-				ICcardInf[i].uid[3]==tmp[3] )
-			{				
-				OLED_Failed();
-				#ifdef __S900__
-				AudioPlay_All(AUDIO_PROMPT_NFC, AUDIO_PROMPT_RECORD_EXIST, AUDIO_PROMPT_NONE);
-				#else
-				AudioPlay(AUDIO_PROMPT_RECORD_EXIST);
-				#endif
-				#ifdef __DEBUG__
-				printf("This PICC is exist!\r\n");
-				#endif
-				APT_Init();
-				return 0;
-			}
-			i++;
-		}		
-		ICcardInf[remap].useflag=UserID;
-		ICcardInf[remap].uid[0]=tmp[0];
-		ICcardInf[remap].uid[1]=tmp[1];
-		ICcardInf[remap].uid[2]=tmp[2];
-		ICcardInf[remap].uid[3]=tmp[3];
-		sprintf(Numstr, " T%d", remap+1);		
-		OLED_EnterResult(0);
-		AudioPlay_All(AUDIO_PROMPT_NFC, AUDIO_PROMPT_RECORD_SAVED, AUDIO_PROMPT_NONE);
-		SaveData_Inf();
-		#ifdef __DEBUG__
-		printf("Nfc Add PICC is Success\r\n");
-		#endif
-	}
-	else
-	{
-		#ifdef __DEBUG__
-		printf("This PICC Add failed!\r\n");
-		#endif
-		OLED_EnterResult(1);
-		#ifdef __S900__
-		AudioPlay_All(AUDIO_PROMPT_NFC, AUDIO_PROMPT_RECORD_FAIL, AUDIO_PROMPT_NONE);
-		#endif
-		APT_Init();
-		return -1;
-	}
-	
-	APT_Init();
-	return status;
-}
-#else
 int RFID_AddPICC(uint8_t UserID,uint16_t User_Number)
 {
-	unsigned char tmp[4];
-	//char Numstr[3];
-	uint8_t i,status,IC_CNT = 0;
-	
-	status = RFID_Init(tmp,1);
-	if(status)
-	{
-		return -1;
-	}
-	
-	if (!status)
-	{
-		AudioPlay(AUDIO_PROMPT_BI);
-		for(i = 0;i < 3; i++)
-		{
-			Read_flash_Data(User_Data, i + USER_Data_0);
-			for(IC_CNT = 0; IC_CNT<100 ;IC_CNT++)
-			{
-				if(UserInfo[IC_CNT].Userflag == 0x31 || UserInfo[IC_CNT].Userflag == 0x32)
-				{
-					if (UserInfo[IC_CNT].Info[0] == tmp[0] &&\
-						UserInfo[IC_CNT].Info[1] == tmp[1] &&\
-						UserInfo[IC_CNT].Info[2] == tmp[2] &&\
-						UserInfo[IC_CNT].Info[3] == tmp[3])
-					{				
-						APT_Init();
-						return 1;
-					}
-				}
-			}
-		}
-		Read_flash_Data(User_Data, User_Number/100 + USER_Data_0);
-		if(UserID == Root)
-		{
-			UserInfo[User_Number%100].Userflag = 0x31;
-			Flag_Inf[ADMIN] ++;
-			Flag_Inf[Admin_RFID] ++;
-		}
-		else if(UserID == User)
-		{
-			UserInfo[User_Number%100].Userflag = 0x32;
-			Flag_Inf[USER] ++;
-			Flag_Inf[User_RFID] ++;
-		}
-		UserInfo[User_Number%100].Info[0] =  tmp[0];
-		UserInfo[User_Number%100].Info[1] =  tmp[1];
-		UserInfo[User_Number%100].Info[2] =  tmp[2];
-		UserInfo[User_Number%100].Info[3] =  tmp[3];
-		//sprintf(Numstr, " T%d", remap+1);		
-		SaveData_Inf(System_Data, System_Data_0);
-		SaveData_Inf(User_Data, User_Number/100 + USER_Data_0);
-		status = 2;
-	}
-	APT_Init();
-	return status;
+	return 0;
 } 
-#endif
+
 
 u8 RFIDRead(u8 *tmp)
 {
@@ -302,65 +123,11 @@ u8 RFIDRead(u8 *tmp)
 
 void RFIDDelete(uint8_t Delet_Number)
 {
-    u8 i=0;
-	Read_flash_Data(User_Data, USER_Data_0);
-	Flag_Inf[ADMIN]--;
-	Flag_Inf[Admin_RFID]--;
-	UserInfo[Delet_Number%100].Userflag = 0xff;
-	UserInfo[Delet_Number%100].User_Info_CNT = 0xff;
-	for(i = 0; i<6; i++)
-	{
-		UserInfo[Delet_Number].Info[i] = 0xff;
-	}
-	SaveData_Inf(User_Data, USER_Data_0);
-	SaveData_Inf(System_Data, System_Data_0);
 }
 
 int RFID_Compare(void)
 {
-	unsigned char tmp[4];
-	uint8_t j = 0, i = 0;
-	uint8_t status;
-	status = RFID_Init(tmp, 1);
-	APT_Init();
-	if (status)
-	{
-		return -1;
-	}
-	
-	/*if (Flag_Inf[General_Open_mode] == 0)
-	{
-		if(__Config_flag == 0)
-		{
-			return 0x31;
-		}
-	}	*/
-	AudioPlay(AUDIO_PROMPT_BI);
-	for(i = 0;i < 3;i++)
-	{
-		Read_flash_Data(User_Data, i + USER_Data_0);
-		while ( j<100 )
-		{
-			if(UserInfo[j].Userflag == 0x31 || UserInfo[j].Userflag == 0x32)
-			{
-				if (UserInfo[j].Info[0] == tmp[0] &&\
-					UserInfo[j].Info[1] == tmp[1] &&\
-					UserInfo[j].Info[2] == tmp[2] &&\
-					UserInfo[j].Info[3] == tmp[3])
-				{				
-					APT_Init();
-					if(!__Config_flag)
-					{
-						Open_Info_flag_temp[0] =  UserInfo[j].Userflag;
-						Open_Info_Numb_temp[0] =  j+i*100+1;
-					}
-					return UserInfo[j].Userflag;
-				}
-			}
-			j++;
-		}
-	}
-	return -2;
+	return 0;
 
 }
 
@@ -384,36 +151,7 @@ extern SecretType bleSecretInfo[SECRET_INFO_NUM_MAX];
 u8 RFIDTouchHave(u8 uType,u8 *uData,u8 uLength)
 {
 	u8 i=0;
-	#if 0
-	for(i=0;i<Flag_Inf[ADMIN];i++)
-	{
-		if((UserInfo[i].Userflag == uType)
-		&&(uType == ADMIN_RFID_STR)	
-		)
-		{
-			if((UserInfo[i].Info[0] == RFIDData[0])
-				&&(UserInfo[i].Info[1] == RFIDData[1])
-				&&(UserInfo[i].Info[2] == RFIDData[2])
-				&&(UserInfo[i].Info[3] == RFIDData[3])
-			)
-			{
-				return i+1;
-			}
-		}
-		else if((UserInfo[i].Userflag == uType)
-		&&(uType == ADMIN_PSW_STR) 
-		)
-		{
-			hexToBCD(UserInfo[i].Info,uTemp,UserInfo[i].User_Info_CNT);
-			if((UserInfo[i].User_Info_CNT == uLength)
-				&&memcmpStr(uData,uTemp,uLength)
-			)
-			{
-				return i+1;
-			}
-		}
-	}
-	#else
+
 	for (i=0; i<Admin_Flag[BT_Admin];i++)
 	{
 		//ÑéÖ¤NFC
@@ -429,7 +167,7 @@ u8 RFIDTouchHave(u8 uType,u8 *uData,u8 uLength)
 			}
 		}
 	}
-	#endif
+	
 	return 0;
 }
 
@@ -439,21 +177,6 @@ extern u8 sysFlg;
 extern u8 touchTimer;
 u8 RFIDCheckPro()
 {
-	u8 i=0;
-	for(i=0;i<Flag_Inf[ADMIN];i++)
-	{
-		if(UserInfo[i].Userflag == ADMIN_RFID_STR)
-		{
-			if((UserInfo[i].Info[0] == RFIDData[0])
-				&&(UserInfo[i].Info[1] == RFIDData[1])
-				&&(UserInfo[i].Info[2] == RFIDData[2])
-				&&(UserInfo[i].Info[3] == RFIDData[3])
-			)
-			{
-				return 1;
-			}
-		}
-	}
 	return 0;
 }
 u8 errorRFIDCnt = 0;

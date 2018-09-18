@@ -66,8 +66,8 @@
 
 //宏常量定义
 #define BULETOOTH_MAC_MAX 14    //蓝牙mac地址最大
-#define SECRET_INFO_NUM_MAX 10  //密码表信息存储最大个数
-#define USER_INFO_NUM_MAX 10  //用户表信息存储最大个数
+#define SECRET_INFO_NUM_MAX 30  //密码表信息存储最大个数
+#define USER_INFO_NUM_MAX 30  //用户表信息存储最大个数
 
 
 extern u8 _get_system_sleep_status(void);

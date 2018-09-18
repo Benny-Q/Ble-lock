@@ -97,21 +97,5 @@ void Bluetooth_init(void)
 	//Usart2_Disable();
 }
 
-void blethpro(void)
-{
-	if(Bluetooth_Rx_Buf[0] == 0xAA)
-	{		
-		Bluetooth_Rx_Num = 0;
-		memset(Bluetooth_Rx_Buf,0xff,80);
-		Usart2_SendByte(0x55);
-	}
-	else
-	{
-		Bluetooth_Rx_Num = 0;
-		memset(Bluetooth_Rx_Buf,0xff,80);
-		Usart2_SendByte(0x5A);
-	}
-
-}
 
 

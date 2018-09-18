@@ -114,7 +114,7 @@ typedef struct _SecretType{
 #define ADD_IP_PORT0				0x2B
 #define ADD_IP_PORT1				0x2C
 
-extern u8 saveAddUser(u8 *uData,u8 wSize);
+extern u8 saveAddUser(u8 *uData,u8 uLen);
 extern u8 saveModifyOrDelUser(u8 *uData,u8 wSize,u8 modifyOrDel);
 extern u8 secretUser(u8 *uData,u8 wSize);
 extern u8 saveAddSecret(u8 *uData,u8 operType);
@@ -126,6 +126,7 @@ extern void memsetStr(u8 *uData1,u8 uData2,u8 uLength);
 extern u8 findSecret(u8 *uSecret,u8 uLength);
 extern void memcpyStr(u8 *uData1,u8 *uData2,u8 uLength);
 extern void btSaveFlashData(u8 data_type, SecretType data);
+extern void btSaveUserFlashData(UserType data);
 extern u8 saveAdminSecret(u8 *uData,u8 wSize);
 extern u8 btDelSecretUserInfo(u8 *uData,u8 operType);
 #endif /*#ifdef __BLUETOOTH_SUPPORT__*/

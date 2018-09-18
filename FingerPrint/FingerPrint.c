@@ -421,15 +421,6 @@ int Fingerprint_Compare(void)
 				case Result_Failed:	
 					return Result_Failed;
 				case Result_Succes:	
-					#ifdef __BLUETOOTH_SUPPORT__
-					#else
-					Read_flash_Data(User_Data, finger_id/100 + USER_Data_0);
-					if(!__Config_flag)
-					{
-						Open_Info_flag_temp[0] =  UserInfo[finger_id%100].Userflag;
-						Open_Info_Numb_temp[0] = finger_id+1;
-					}
-					#endif
 					return Result_Succes;//UserInfo[finger_id%100].Userflag;
 				case Result_Timeout:
 					return Result_Timeout;

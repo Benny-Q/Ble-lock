@@ -158,20 +158,18 @@ int main(){
 /*-------------------------------------*/ 
 	Config_Key_Init();
 	figcntRxd = 0;
-
-	//第一次开机清除一次蓝牙上电发送的字符
-	gBle.uDataLen=0;
-/****************
-	test Hardware
-****************/	
-	check_Admin_info();
+	
+	InitFlashData();
 	LED_drive();
 	__Config_flag = 0;
+	
+	InitializationBTMac();
 	#if 1//def	__DEBUG2__
 	printf("Start init finish\r\n");
 	#endif
 	AudioPlay(AUDIO_PROMPT_WELCOME);
-//	bluetooth_init();
+	//第一次开机清除一次蓝牙上电发送的字符
+	gBle.uDataLen=0;
 
 /***************************************************
 *														  *	

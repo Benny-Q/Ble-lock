@@ -91,13 +91,15 @@ typedef enum
 	BT_Admin_Pswd,
 	BT_Admin_RFID,
 	BT_Admin_FPRT,
-	BT_Admin_Max
+	BT_User,
+	BT_Mac,
+	BT_Flag_Max
 }BT_Flag_Info;
 
 
 //数据存储flash每页中的起始地址
 #define SYS_DATA_ADDR 0
-#define SYS_DATA_BTMAC_ADDR BT_Admin_Max
+#define SYS_DATA_BTMAC_ADDR BT_Flag_Max
 
 
 /************************************************************
@@ -130,12 +132,12 @@ typedef struct
 }Open_Info;
 
 
-extern User_Info UserInfo[100];
+//extern User_Info UserInfo[100];
 extern u8 Flag_Inf[ADD_MAX];
 extern Flag_Info FlagInfo;
-extern Open_Info OpenInfo[125];
+//extern Open_Info OpenInfo[125];
 
-extern u8 Admin_Flag[BT_Admin_Max];
+extern u8 Admin_Flag[BT_Flag_Max];
 
 
 

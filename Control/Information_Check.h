@@ -58,7 +58,7 @@ extern Open_Door_Mode Open_Door_Info;
 #if 0
 extern uint8_t Check_Admin(void);
 #else
-extern void check_Admin_info(void);
+extern void InitFlashData(void);
 #endif
 
 extern void clean_input_key_value(void);
